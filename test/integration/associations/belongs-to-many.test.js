@@ -1740,7 +1740,18 @@ describe(Support.getTestDialectTeaser('BelongsToMany'), function() {
       }).then(function() {
         return Promise.all([
           self.sequelize.model('tasksusers').findAll({ where: { userId: this.user1.id }}),
-          self.sequelize.model('tasksusers').findAll({ where: { taskId: this.task2.id }})
+          self.sequelize.model('tasksusers').findAll({ where: { taskId: this.task2.id }}),
+          self.User.findOne({
+            where: self.sequelize.or({ username: 'Franz Joseph' }),
+            include: [{
+              model: self.Task,
+              where: {
+                title: {
+                  $ne: 'task'
+                }
+              }
+            }]
+          }),
         ]);
       }).spread(function(tu1, tu2) {
         expect(tu1).to.have.length(0);
@@ -1874,8 +1885,8 @@ describe(Support.getTestDialectTeaser('BelongsToMany'), function() {
 
         var UserProjects = User.belongsToMany(Project, { foreignKey: { name: 'user_id', defaultValue: 42 }, through: 'UserProjects' });
         expect(UserProjects.through.model.rawAttributes.user_id).to.be.ok;
-        expect(UserProjects.through.model.rawAttributes.user_id.references).to.equal(User.getTableName());
-        expect(UserProjects.through.model.rawAttributes.user_id.referencesKey).to.equal('uid');
+        expect(UserProjects.through.model.rawAttributes.user_id.references.model).to.equal(User.getTableName());
+        expect(UserProjects.through.model.rawAttributes.user_id.references.key).to.equal('uid');
         expect(UserProjects.through.model.rawAttributes.user_id.defaultValue).to.equal(42);
       });
     });

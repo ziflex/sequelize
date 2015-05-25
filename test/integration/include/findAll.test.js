@@ -1877,5 +1877,48 @@ describe(Support.getTestDialectTeaser('Include'), function() {
         });
       });
     });
+
+    it('should ignore include with attributes: [] (used for aggregates)', function () {
+      var Post = this.sequelize.define('Post', {
+            title: DataTypes.STRING
+          })
+        , Comment = this.sequelize.define('Comment', {
+            content: DataTypes.TEXT
+          });
+
+      Post.Comments = Post.hasMany(Comment, {as: 'comments'});
+
+      return this.sequelize.sync({force: true}).bind(this).then(function () {
+        return Post.create({
+          title: Math.random().toString(),
+          comments: [
+            {content: Math.random().toString()},
+            {content: Math.random().toString()},
+            {content: Math.random().toString()},
+          ]
+        }, {
+          include: [Post.Comments]
+        });
+      }).then(function () {
+        return Post.findAll({
+          attributes: [
+            [this.sequelize.fn('COUNT', this.sequelize.col('comments.id')), 'commentCount']
+          ],
+          include: [
+            {association: Post.Comments, attributes: []}
+          ],
+          group: [
+            'Post.id'
+          ]
+        });
+      }).then(function (posts) {
+        expect(posts.length).to.equal(1);
+
+        var post = posts[0];
+
+        expect(post.get('comments')).not.to.be.ok;
+        expect(parseInt(post.get('commentCount'), 10)).to.equal(3);
+      });
+    });
   });
 });

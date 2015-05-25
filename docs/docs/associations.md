@@ -143,10 +143,10 @@ Defining `through` is required. Sequelize would previously attempt to autogenera
 
 This will add methods `getUsers`, `setUsers`, `addUsers` to `Project`, and `getProjects`, `setProjects` and `addProject` to `User`.
 
-Sometimes you may want to rename your models when using them in associations. Let's define users as workers and projects as tasks by using the alias (`as`) option:
+Sometimes you may want to rename your models when using them in associations. Let's define users as workers and projects as tasks by using the alias (`as`) option. We will also manually define the foreign keys to use:
 ```js
-User.belongsToMany(Project, { as: 'Tasks', through: 'worker_tasks' })
-Project.belongsToMany(User, { as: 'Workers', through: 'worker_tasks' })
+User.belongsToMany(Project, { as: 'Tasks', through: 'worker_tasks', foreignKey: 'userId' })
+Project.belongsToMany(User, { as: 'Workers', through: 'worker_tasks', foreignKey: 'projectId' })
 ```
 
 Of course you can also define self references with belongsToMany:
@@ -590,8 +590,10 @@ Series = sequelize.define('Series', {
   // Set FK relationship (hasMany) with `Trainer`
   trainer_id: {
     type: DataTypes.INTEGER,
-    references: "Trainers",
-    referencesKey: "id"
+    references: {
+      model: "Trainers",
+      key: "id"
+    }
   }
 })
  
@@ -609,8 +611,10 @@ Video = sequelize.define('Video', {
   // set relationship (hasOne) with `Series`
   series_id: {
     type: DataTypes.INTEGER,
-    references: Series, // Can be both a string representing the table name, or a reference to the model
-    referencesKey: "id"
+    references: {
+      model: Series, // Can be both a string representing the table name, or a reference to the model
+      key:   "id"
+    }
   }
 });
  
