@@ -29,6 +29,11 @@ If you still use 1.7 please prefer to [Upgrading to 2.0](https://github.com/sequ
 - Migrations
 - CLI ([sequelize-cli](https://github.com/sequelize/cli))
 
+## Fork Features
+
+- Public hash with dialects which allows you to provide custom dialect
+- ```ConnectionManager``` receives options in ```getConnection``` from ```Transaction``` object
+
 ## Resources
 - [Changelog](https://github.com/sequelize/sequelize/blob/master/changelog.md)
 - [Getting Started](http://docs.sequelizejs.com/en/latest/docs/getting-started/)
