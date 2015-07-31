@@ -31,6 +31,7 @@ describe(Support.getTestDialectTeaser('BelongsToMany'), function() {
         ]);
       }).spread(function(john, task1, task2) {
         self.tasks = [task1, task2];
+        self.user = john;
         return john.setTasks([task1, task2]);
       });
     });
@@ -101,7 +102,11 @@ describe(Support.getTestDialectTeaser('BelongsToMany'), function() {
 
     it('only get objects that fulfill the options', function() {
       return this.User.find({where: {username: 'John'}}).then(function(john) {
-        return john.getTasks({where: {active: true}});
+        return john.getTasks({
+          where: {
+            active: true
+          }
+        });
       }).then(function(tasks) {
         expect(tasks).to.have.length(1);
       });
@@ -406,6 +411,99 @@ describe(Support.getTestDialectTeaser('BelongsToMany'), function() {
             })
           );
         });
+      });
+    });
+  });
+
+  describe('countAssociations', function() {
+    beforeEach(function() {
+      var self = this;
+
+      this.User = this.sequelize.define('User', {
+        username: DataTypes.STRING
+      });
+      this.Task = this.sequelize.define('Task', {
+        title: DataTypes.STRING,
+        active: DataTypes.BOOLEAN
+      });
+      this.UserTask = this.sequelize.define('UserTask', {
+        id: {
+          type: DataTypes.INTEGER,
+          primaryKey: true,
+          autoIncrement: true
+        },
+        started: {
+          type: DataTypes.BOOLEAN,
+          defaultValue: false
+        }
+      });
+
+      this.User.belongsToMany(this.Task, { through: this.UserTask });
+      this.Task.belongsToMany(this.User, { through: this.UserTask });
+
+      return this.sequelize.sync({ force: true }).then(function() {
+        return Promise.all([
+          self.User.create({ username: 'John'}),
+          self.Task.create({ title: 'Get rich', active: true}),
+          self.Task.create({ title: 'Die trying', active: false})
+        ]);
+      }).spread(function(john, task1, task2) {
+        self.tasks = [task1, task2];
+        self.user = john;
+        return john.setTasks([task1, task2]);
+      });
+    });
+
+    it('should count all associations', function () {
+      return expect(this.user.countTasks({})).to.eventually.equal(2);
+    });
+
+    it('should count filtered associations', function () {
+      return expect(this.user.countTasks({
+        where: {
+          active: true
+        }
+      })).to.eventually.equal(1);
+    });
+
+    it('should count scoped associations', function () {
+      this.User.belongsToMany(this.Task, {
+        as: 'activeTasks',
+        through: this.UserTask,
+        scope: {
+          active: true
+        }
+      });
+
+      return expect(this.user.countActiveTasks({})).to.eventually.equal(1);
+    });
+
+    it('should count scoped through associations', function () {
+      var user = this.user;
+
+      this.User.belongsToMany(this.Task, {
+        as: 'startedTasks',
+        through: {
+          model: this.UserTask,
+          scope: {
+            started: true
+          }
+        }
+      });
+
+      return Promise.join(
+        this.Task.create().then(function (task) {
+          return user.addTask(task, {
+            started: true
+          });
+        }),
+        this.Task.create().then(function (task) {
+          return user.addTask(task, {
+            started: true
+          });
+        })
+      ).then(function () {
+        return expect(user.countStartedTasks({})).to.eventually.equal(2);
       });
     });
   });
@@ -857,6 +955,56 @@ describe(Support.getTestDialectTeaser('BelongsToMany'), function() {
           expect(users).to.have.length(3);
         });
       });
+    });
+  });
+
+  describe('through model validations', function () {
+    beforeEach(function () {
+      var Project = this.sequelize.define('Project', {
+        name: Sequelize.STRING
+      });
+
+      var Employee = this.sequelize.define('Employee', {
+        name: Sequelize.STRING
+      });
+
+      var Participation = this.sequelize.define('Participation', {
+        role: {
+          type: Sequelize.STRING,
+          allowNull: false,
+          validate: {
+            len: {
+              args: [2, 50],
+              msg: 'too bad'
+            }
+          }
+        }
+      });
+
+      Project.belongsToMany(Employee, { as: 'Participants', through: Participation });
+      Employee.belongsToMany(Project, { as: 'Participations', through: Participation });
+
+      return this.sequelize.sync({ force: true }).bind(this).then(function () {
+        return Promise.all([
+          Project.create({ name: 'project 1' }),
+          Employee.create({ name: 'employee 1' })
+        ]).bind(this).spread(function (project, employee) {
+          this.project = project;
+          this.employee = employee;
+        });
+      });
+    });
+
+    it('runs on add', function () {
+      return expect(this.project.addParticipant(this.employee, { role: ''})).to.be.rejected;
+    });
+
+    it('runs on set', function () {
+      return expect(this.project.setParticipants([this.employee], { role: ''})).to.be.rejected;
+    });
+
+    it('runs on create', function () {
+      return expect(this.project.createParticipant({ name: 'employee 2'}, { role: ''})).to.be.rejected;
     });
   });
 

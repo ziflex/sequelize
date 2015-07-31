@@ -70,29 +70,29 @@ describe(Support.getTestDialectTeaser('Utils'), function() {
   describe('underscore', function() {
     describe('underscoredIf', function() {
       it('is defined', function() {
-        expect(Utils._.underscoredIf).to.be.ok;
+        expect(Utils.underscoredIf).to.be.ok;
       });
 
       it('underscores if second param is true', function() {
-        expect(Utils._.underscoredIf('fooBar', true)).to.equal('foo_bar');
+        expect(Utils.underscoredIf('fooBar', true)).to.equal('foo_bar');
       });
 
       it('doesn\'t underscore if second param is false', function() {
-        expect(Utils._.underscoredIf('fooBar', false)).to.equal('fooBar');
+        expect(Utils.underscoredIf('fooBar', false)).to.equal('fooBar');
       });
     });
 
     describe('camelizeIf', function() {
       it('is defined', function() {
-        expect(Utils._.camelizeIf).to.be.ok;
+        expect(Utils.camelizeIf).to.be.ok;
       });
 
       it('camelizes if second param is true', function() {
-        expect(Utils._.camelizeIf('foo_bar', true)).to.equal('fooBar');
+        expect(Utils.camelizeIf('foo_bar', true)).to.equal('fooBar');
       });
 
       it('doesn\'t camelize if second param is false', function() {
-        expect(Utils._.underscoredIf('fooBar', true)).to.equal('foo_bar');
+        expect(Utils.underscoredIf('fooBar', true)).to.equal('foo_bar');
       });
     });
   });
@@ -106,6 +106,43 @@ describe(Support.getTestDialectTeaser('Utils'), function() {
     it('should format where clause correctly when the value is false', function() {
       var where = ['foo = ?', 0];
       expect(Utils.format(where)).to.equal('foo = 0');
+    });
+  });
+
+  describe('cloneDeep', function() {
+    it('should clone objects', function() {
+      var obj = {foo: 1}
+        , clone = Utils.cloneDeep(obj);
+
+      expect(obj).to.not.equal(clone);
+    });
+
+    it('should clone nested objects', function() {
+      var obj = {foo: {bar: 1}}
+        , clone = Utils.cloneDeep(obj);
+
+      expect(obj.foo).to.not.equal(clone.foo);
+    });
+
+    it('should not call clone methods on plain objects', function() {
+      expect(function() {
+        Utils.cloneDeep({
+          clone: function() {
+            throw new Error('clone method called');
+          }
+        });
+      }).to.not.throw();
+    });
+
+    it('should not call clone methods on arrays', function() {
+      expect(function() {
+        var arr = [];
+        arr.clone = function() {
+          throw new Error('clone method called');
+        };
+
+        Utils.cloneDeep(arr);
+      }).to.not.throw();
     });
   });
 

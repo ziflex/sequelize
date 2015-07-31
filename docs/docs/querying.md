@@ -7,7 +7,7 @@ Whether you are querying with findAll/find or doing bulk updates/destroys you ca
 It's also possible to generate complex AND/OR conditions by nesting sets of `$or` and `$and`.
 
 ### Basics
-```
+```js
 Post.findAll({
   where: {
     authorId: 2
@@ -48,11 +48,12 @@ Post.update({
 $gt: 6,                // id > 6
 $gte: 6,               // id >= 6
 $lt: 10,               // id < 10
-$lte: 10,              // id
+$lte: 10,              // id <= 10
 $ne: 20,               // id != 20
 $between: [6, 10],     // BETWEEN 6 AND 10
 $notBetween: [11, 15], // NOT BETWEEN 11 AND 15
 $in: [1, 2],           // IN [1, 2]
+$notIn: [1, 2],        // NOT IN [1, 2]
 $like: '%hat',         // LIKE '%hat'
 $notLike: '%hat'       // NOT LIKE '%hat'
 $iLike: '%hat'         // ILIKE '%hat' (case insensitive)
@@ -141,7 +142,19 @@ JSONB can be queried in three different ways.
 }
 ```
 
+### Relations / Associations
+```js
+// Find all projects with a least one task where task.state === project.task
+Project.findAll({
+    include: [{
+        model: Task,
+        where: { state: Sequelize.col('project.state') }
+    }]
+})
+```
+
 ## Pagination / Limiting
+
 ```js
 // Fetch 10 instances/rows
 Project.findAll({ limit: 10 })

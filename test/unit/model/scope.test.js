@@ -63,6 +63,7 @@ describe(Support.getTestDialectTeaser('Model'), function() {
 
   Company = current.define('company', {}, {
     defaultScope: {
+      include: [Project],
       where: { active: true }
     },
     scopes: scopes
@@ -70,7 +71,10 @@ describe(Support.getTestDialectTeaser('Model'), function() {
 
   describe('.scope', function () {
     it('should apply default scope', function () {
-      expect(Company.$scope).to.deep.equal({ where: { active: true }});
+      expect(Company.$scope).to.deep.equal({
+        include: [{ model: Project }],
+        where: { active: true }
+      });
     });
 
     it('should be able to unscope', function () {
@@ -125,6 +129,7 @@ describe(Support.getTestDialectTeaser('Model'), function() {
 
     it('should be able to combine default with another scope', function () {
       expect(Company.scope(['defaultScope', {method: ['actualValue', 11]}]).$scope).to.deep.equal({
+        include: [{ model: Project }],
         where: {
           active: true,
           other_value: 11
@@ -140,6 +145,7 @@ describe(Support.getTestDialectTeaser('Model'), function() {
 
     it('should override the default scope', function () {
       expect(Company.scope(['defaultScope', {method: ['complexFunction', 'qux']}]).$scope).to.deep.equal({
+        include: [{ model: Project }],
         where: [ 'qux IN (SELECT foobar FROM some_sql_function(foo.bar))' ]
       });
     });
@@ -148,6 +154,60 @@ describe(Support.getTestDialectTeaser('Model'), function() {
       expect(function () {
         Company.scope('doesntexist');
       }).to.throw('Invalid scope doesntexist called.');
+    });
+  });
+
+  describe('addScope', function () {
+    it('allows me to add a new scope', function ()  {
+      expect(function () {
+        Company.scope('newScope');
+      }).to.throw('Invalid scope newScope called.');
+
+      Company.addScope('newScope', {
+        where: {
+          this: 'that'
+        },
+        include: [Project]
+      });
+
+      expect(Company.scope('newScope').$scope).to.deep.equal({
+        where: { this: 'that' },
+        include: [{ model: Project }]
+      });
+    });
+
+    it('warns me when overriding an existing scope', function () {
+      expect(function () {
+        Company.addScope('somethingTrue', {});
+      }).to.throw('The scope somethingTrue already exists. Pass { override: true } as options to silence this error');
+    });
+
+    it('allows me to override an existing scope', function () {
+      Company.addScope('somethingTrue', {
+        where: {
+          something: false
+        }
+      }, { override: true });
+
+      expect(Company.scope('somethingTrue').$scope).to.deep.equal({
+        where: { something: false },
+      });
+    });
+
+    it('warns me when overriding an existing default scope', function () {
+      expect(function () {
+        Company.addScope('defaultScope', {});
+      }).to.throw('The scope defaultScope already exists. Pass { override: true } as options to silence this error');
+    });
+
+    it('allows me to override a default scope', function () {
+      Company.addScope('defaultScope', {
+        include: [Project]
+      }, { override: true });
+
+      expect(Company.$scope).to.deep.equal({
+        include: [{ model: Project }]
+      });
     });
   });
 

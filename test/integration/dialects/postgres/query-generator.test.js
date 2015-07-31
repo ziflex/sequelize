@@ -16,9 +16,9 @@ if (dialect.match(/^postgres/)) {
     beforeEach(function() {
       this.User = this.sequelize.define('User', {
         username: DataTypes.STRING,
-        email: {type: DataTypes.ARRAY(DataTypes.TEXT)},
-        numbers: {type: DataTypes.ARRAY(DataTypes.FLOAT)},
-        document: {type: DataTypes.HSTORE, defaultValue: '"default"=>"value"'}
+        email: { type: DataTypes.ARRAY(DataTypes.TEXT) },
+        numbers: { type: DataTypes.ARRAY(DataTypes.FLOAT) },
+        document: { type: DataTypes.HSTORE, defaultValue: { default: '"value"' } }
       });
       return this.User.sync({ force: true });
     });
@@ -204,7 +204,7 @@ if (dialect.match(/^postgres/)) {
         },
         {
           arguments: ['myTable', {title: 'ENUM("A", "B", "C")', name: 'VARCHAR(255)'}],
-          expectation: 'CREATE TABLE IF NOT EXISTS myTable (title enum_myTable_title, name VARCHAR(255));',
+          expectation: 'CREATE TABLE IF NOT EXISTS myTable (title "enum_myTable_title", name VARCHAR(255));',
           context: {options: {quoteIdentifiers: false}}
         },
         {

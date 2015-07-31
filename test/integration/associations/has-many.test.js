@@ -26,7 +26,160 @@ describe(Support.getTestDialectTeaser('HasMany'), function() {
     });
   });
 
+  describe('get', function () {
+    if (current.dialect.supports.groupedLimit) {
+      describe('multiple', function () {
+        it('should fetch associations for multiple instances', function () {
+          var User = this.sequelize.define('User', {})
+            , Task = this.sequelize.define('Task', {});
+
+          User.Tasks = User.hasMany(Task, {as: 'tasks'});
+
+          return this.sequelize.sync({force: true}).then(function () {
+            return Promise.join(
+              User.create({
+                id: 1,
+                tasks: [
+                  {},
+                  {},
+                  {}
+                ]
+              }, {
+                include: [User.Tasks]
+              }),
+              User.create({
+                id: 2,
+                tasks: [
+                  {}
+                ]
+              }, {
+                include: [User.Tasks]
+              }),
+              User.create({
+                id: 3
+              })
+            );
+          }).then(function (users) {
+            return User.Tasks.get(users).then(function (result) {
+              expect(result[users[0].id].length).to.equal(3);
+              expect(result[users[1].id].length).to.equal(1);
+              expect(result[users[2].id].length).to.equal(0);
+            });
+          });
+        });
+
+        it('should fetch associations for multiple instances with limit and order', function () {
+          var User = this.sequelize.define('User', {})
+            , Task = this.sequelize.define('Task', {
+                title: DataTypes.STRING
+              });
+
+          User.Tasks = User.hasMany(Task, {as: 'tasks'});
+
+          return this.sequelize.sync({force: true}).then(function () {
+            return Promise.join(
+              User.create({
+                tasks: [
+                  {title: 'b'},
+                  {title: 'd'},
+                  {title: 'c'},
+                  {title: 'a'}
+                ]
+              }, {
+                include: [User.Tasks]
+              }),
+              User.create({
+                tasks: [
+                  {title: 'a'},
+                  {title: 'c'},
+                  {title: 'b'}
+                ]
+              }, {
+                include: [User.Tasks]
+              })
+            );
+          }).then(function (users) {
+            return User.Tasks.get(users, {
+              limit: 2,
+              order: [
+                ['title', 'ASC']
+              ]
+            }).then(function (result) {
+              expect(result[users[0].id].length).to.equal(2);
+              expect(result[users[0].id][0].title).to.equal('a');
+              expect(result[users[0].id][1].title).to.equal('b');
+
+              expect(result[users[1].id].length).to.equal(2);
+              expect(result[users[1].id][0].title).to.equal('a');
+              expect(result[users[1].id][1].title).to.equal('b');
+            });
+          });
+        });
+
+        it('should fetch associations for multiple instances with limit and order and a belongsTo relation', function () {
+          var User = this.sequelize.define('User', {})
+            , Task = this.sequelize.define('Task', {
+                title: DataTypes.STRING,
+                categoryId: {
+                  type: DataTypes.INTEGER,
+                  field: 'category_id'
+                }
+              })
+            , Category = this.sequelize.define('Category', {});
+
+          User.Tasks = User.hasMany(Task, {as: 'tasks'});
+          Task.Category = Task.belongsTo(Category, {as: 'category', foreignKey: 'categoryId'});
+
+          return this.sequelize.sync({force: true}).then(function () {
+            return Promise.join(
+              User.create({
+                tasks: [
+                  {title: 'b', category: {}},
+                  {title: 'd', category: {}},
+                  {title: 'c', category: {}},
+                  {title: 'a', category: {}}
+                ]
+              }, {
+                include: [{association: User.Tasks, include: [Task.Category]}]
+              }),
+              User.create({
+                tasks: [
+                  {title: 'a', category: {}},
+                  {title: 'c', category: {}},
+                  {title: 'b', category: {}}
+                ]
+              }, {
+                include: [{association: User.Tasks, include: [Task.Category]}]
+              })
+            );
+          }).then(function (users) {
+            return User.Tasks.get(users, {
+              limit: 2,
+              order: [
+                ['title', 'ASC']
+              ],
+              include: [Task.Category],
+            }).then(function (result) {
+              expect(result[users[0].id].length).to.equal(2);
+              expect(result[users[0].id][0].title).to.equal('a');
+              expect(result[users[0].id][0].category).to.be.ok;
+              expect(result[users[0].id][1].title).to.equal('b');
+              expect(result[users[0].id][1].category).to.be.ok;
+
+              expect(result[users[1].id].length).to.equal(2);
+              expect(result[users[1].id][0].title).to.equal('a');
+              expect(result[users[1].id][0].category).to.be.ok;
+              expect(result[users[1].id][1].title).to.equal('b');
+              expect(result[users[1].id][1].category).to.be.ok;
+            });
+          });
+        });
+      });
+    }
+  });
+
   describe('(1:N)', function() {
+
     describe('hasSingle', function() {
       beforeEach(function() {
         this.Article = this.sequelize.define('Article', { 'title': DataTypes.STRING });
@@ -631,6 +784,54 @@ describe(Support.getTestDialectTeaser('HasMany'), function() {
         }).then(function(tasks) {
           expect(tasks).to.have.length(1);
         });
+      });
+    });
+
+    describe('countAssociations', function () {
+      beforeEach(function() {
+        var self = this;
+
+        this.User = this.sequelize.define('User', { username: DataTypes.STRING });
+        this.Task = this.sequelize.define('Task', { title: DataTypes.STRING, active: DataTypes.BOOLEAN });
+
+        this.User.hasMany(self.Task, {
+          foreignKey: 'userId'
+        });
+
+        return this.sequelize.sync({ force: true }).then(function() {
+          return Promise.all([
+            self.User.create({ username: 'John'}),
+            self.Task.create({ title: 'Get rich', active: true}),
+            self.Task.create({ title: 'Die trying', active: false})
+          ]);
+        }).spread(function(john, task1, task2) {
+          self.user = john;
+          return john.setTasks([task1, task2]);
+        });
+      });
+
+      it('should count all associations', function () {
+        return expect(this.user.countTasks({})).to.eventually.equal(2);
+      });
+
+      it('should count filtered associations', function () {
+        return expect(this.user.countTasks({
+          where: {
+            active: true
+          }
+        })).to.eventually.equal(1);
+      });
+
+      it('should count scoped associations', function () {
+        this.User.hasMany(this.Task, {
+          foreignKey: 'userId',
+          as: 'activeTasks',
+          scope: {
+            active: true
+          }
+        });
+
+        return expect(this.user.countActiveTasks({})).to.eventually.equal(1);
       });
     });
 
