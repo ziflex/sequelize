@@ -33,6 +33,8 @@ If you still use 1.7 please prefer to [Upgrading to 2.0](https://github.com/sequ
 
 - Public hash with dialects which allows you to provide custom dialect
 - ```ConnectionManager``` receives options in ```getConnection``` from ```Transaction``` object
+- Date got serialized as ISO string.
+- Remove timezone detection in date deserialization.
 
 ## Resources
 - [Changelog](https://github.com/sequelize/sequelize/blob/master/changelog.md)
